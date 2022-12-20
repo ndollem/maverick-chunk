@@ -1,6 +1,7 @@
 <?php
 
 require_once "vendor/autoload.php";
+//require_once "src/maverickChunker-php5.php";
 require_once "src/maverickChunker.php";
 
 use GuzzleHttp\Client;
