@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+    mywebserver:
+        container_name: maverick-chunk
+        build:
+            context: ./
+            dockerfile: Dockerfile
+        volumes:
+            - ./:/var/www/html/
+        ports:
+            - 8000:80
