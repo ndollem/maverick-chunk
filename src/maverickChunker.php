@@ -149,6 +149,28 @@ class maverickChunker
                     }
 
                     break;
+                case 'text':
+
+                    //CASE : -- if current text is really short
+                    if($row['chars']<=60){
+                        //combine with next row data (as long it also text)
+                        if($rows[$index+1]['type']=='text'){
+                            $row['attributes']['subcontent'] = $rows[$index+1];
+                            
+                            //populate template configuration for subcontent
+                            $row['attributes']['subcontent']['template'] = [
+                                'bg_theme' => $templ_conf['bg_theme'],
+                                'fontSize_class' => $this->get_fontSize($row['attributes']['subcontent']['chars'])
+                            ];
+
+                            //change the type to heading
+                            $row['type'] = 'text-heading';
+                            
+                            //skip for next itteration
+                            $skip_next = true;
+                        }
+                    }
+                    break;
                 default:
             }
 
