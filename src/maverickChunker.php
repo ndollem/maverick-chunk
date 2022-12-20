@@ -88,7 +88,7 @@ class maverickChunker
                 'type' => $type,
                 'chars' => ($type=='img') ? 0 : strlen($item->textContent),
                 'words' => ($type=='img') ? 0 : str_word_count(strip_tags($this->elmToHtml($item))),
-                'content' => ($type=='img') ? null : $item->firstChild->textContent,
+                'content' => ($type=='img') ? null : strip_tags($this->elmToHtml($item)),
                 'rawContent' => $this->elmToHtml($item),
                 'attributes' => $this->get_attributes($item),
                 'santences' => [
@@ -165,7 +165,7 @@ class maverickChunker
 
                             //change the type to heading
                             $row['type'] = 'text-heading';
-                            
+
                             //skip for next itteration
                             $skip_next = true;
                         }
