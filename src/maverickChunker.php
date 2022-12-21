@@ -129,8 +129,8 @@ class maverickChunker
     {
         $data = [];
         $skip_next = false;
-
-        foreach($rows as $index=>$row)
+        
+        foreach(array_values($rows) as $index=>$row)
         {
             //check if need to skip this itteration 
             if($skip_next){
