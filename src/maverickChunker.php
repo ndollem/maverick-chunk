@@ -23,18 +23,21 @@ class maverickChunker
 
         $this->fs_opt = [
             'vh-text-xs'=> [
-                'min'=> 601, 'max'=> 1000
+                'min'=> 801, 'max'=> 10000
             ],
             'vh-text-sm'=> [
-                'min'=> 351, 'max'=> 600
+                'min'=> 501, 'max'=> 800
             ],
             'vh-text-md'=> [
-                'min'=> 201, 'max'=> 350
+                'min'=> 371, 'max'=> 500
             ],
             'vh-text-lg'=> [
-                'min'=> 101, 'max'=> 200
+                'min'=> 271, 'max'=> 370
             ],
             'vh-text-xl'=> [
+                'min'=> 101, 'max'=> 270
+            ],
+            'vh-text-2xl'=> [
                 'min'=> 1, 'max'=> 100
             ],
         ];
