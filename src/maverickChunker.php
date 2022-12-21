@@ -16,8 +16,9 @@ class maverickChunker
 
         $this->bg_color_order = -1;
         
+        //adjust this according to each site provided UI Style
         $this->bg_color_opt = [
-            'bg-light-0', 'bg-light-1', 'bg-light-2', 'bg-light-3'
+            'bg-light-0', 'bg-light-1', 'bg-light-2', 'bg-light-3', 'bg-light-4'
         ];
 
         $this->fs_opt = [
@@ -146,7 +147,7 @@ class maverickChunker
                 case 'img':
 
                     //CASE : -- if next row is part of image caption
-                    if($rows[$index+1]['type']=='img-caption'){
+                    if(isset($rows[$index+1]) && $rows[$index+1]['type']=='img-caption'){
                         //combine next row data of image caption into this row
                         $row['attributes']['caption'] = $rows[$index+1];
                         //skip for next itteration
@@ -159,7 +160,7 @@ class maverickChunker
                     //CASE : -- if current text is really short
                     if($row['chars']<=60){
                         //combine with next row data (as long it also text)
-                        if($rows[$index+1]['type']=='text'){
+                        if(isset($rows[$index+1]) && $rows[$index+1]['type']=='text'){
                             $row['attributes']['subcontent'] = $rows[$index+1];
                             
                             //populate template configuration for subcontent
