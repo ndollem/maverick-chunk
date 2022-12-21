@@ -1,4 +1,5 @@
 <?php
+libxml_use_internal_errors(true);
 
 class maverickChunker
 {
@@ -11,7 +12,7 @@ class maverickChunker
     function __construct($rawContent)
     {
         $this->content = ($rawContent) ? $rawContent : false;
-
+        
         $this->bg_color_order = -1;
         
         $this->bg_color_opt = [
@@ -40,21 +41,26 @@ class maverickChunker
     public function parseNews($row)
     {
         //get main news_content value. Change the field name if necessasy
-        $news = $this->parseDom($row['news_content']);
+        $news = $this->parseDom($this->replace_fig_with_p($row['news_content']));
         
         //add news_paging value content. Change the field name if necessary
-        if(count($row['news_paging']) > 0) {
+        if(isset($row['news_paging']) && count($row['news_paging']) > 0) {
             foreach($row['news_paging'] as $np) {
-                $news = array_merge($news, $this->parseDom(html_entity_decode($np['content'])));
+                $news = array_merge($news, $this->parseDom($this->replace_fig_with_p(html_entity_decode($np['content']))));
             }
         }
-        
+        //print_r($news);
         $news = $this->transformElement($news);
 
         return $news;
     }
 
-    public function parseDom($data)
+    private function replace_fig_with_p($text)
+    {
+        return str_replace("figure", "p", $text);
+    }
+
+    private function parseDom($data)
     {
         $dom = $this->loadDOM($data);
         $domx = new DOMXPath($dom);
@@ -67,7 +73,7 @@ class maverickChunker
         return $arr;
     }
 
-    public function loadDOM($data, $opt=0)
+    private function loadDOM($data, $opt=0)
     {
         $dom = new DOMDocument();
         $dom->loadHTML($data, $opt);
@@ -75,7 +81,7 @@ class maverickChunker
         return $dom;
     }
 
-    public function transformElement($elm)
+    private function transformElement($elm)
     {
         $return_elm = [];
 

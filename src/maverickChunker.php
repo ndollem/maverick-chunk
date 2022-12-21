@@ -43,20 +43,25 @@ class maverickChunker
     {
         $news = collect();
 
-        $news = $news->merge($this->parseDom($row['news_content']));
+        $news = $news->merge($this->parseDom($this->replace_fig_with_p($row['news_content'])));
 
-        if(count($row['news_paging']) > 0) {
+        if(isset($row['news_paging']) && count($row['news_paging']) > 0) {
             foreach($row['news_paging'] as $np) {
-                $news = $news->merge($this->parseDom(html_entity_decode($np['content'])));
+                $news = $news->merge($this->parseDom($this->replace_fig_with_p(html_entity_decode($np['content']))));
             }
         }
-
+        //print_r($news);
         $news = $this->transformElement($news);
 
         return $news;
     }
 
-    public function parseDom($data)
+    private function replace_fig_with_p($text)
+    {
+        return str_replace("figure", "p", $text);
+    }
+
+    private function parseDom($data)
     {
         $dom = $this->loadDOM($data);
         $domx = new DOMXPath($dom);
@@ -69,7 +74,7 @@ class maverickChunker
         return collect($arr);
     }
 
-    public function loadDOM($data, $opt=0)
+    private function loadDOM($data, $opt=0)
     {
         $dom = new DOMDocument();
         $dom->loadHTML($data, $opt);
@@ -77,7 +82,7 @@ class maverickChunker
         return $dom;
     }
 
-    public function transformElement(Collection $elm): array
+    private function transformElement(Collection $elm): array
     {
         $elm->transform(function($item, $key) {
             //print_r($item);
