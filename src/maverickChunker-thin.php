@@ -9,17 +9,12 @@ class maverickChunker
     private $bg_color_order;
     private $bg_color_opt;
     private $fs_opt;
-    private $allowedEl;
-    private $max_char = 700;
     
     function __construct($rawContent)
     {
         $this->content = ($rawContent) ? $rawContent : false;
 
         $this->bg_color_order = -1;
-
-        //allowed main element to be checked on chunk process
-        $this->allowedEl = ['p', 'ol', 'ul', 'img', 'figure'];
         
         //adjust this according to each site provided UI Style
         $this->bg_color_opt = [
@@ -27,12 +22,24 @@ class maverickChunker
         ];
 
         $this->fs_opt = [
-            'vh-text-xs'=> ['min'=> 501, 'max'=> 10000],
-            'vh-text-sm'=> ['min'=> 401, 'max'=> 500],
-            'vh-text-md'=> ['min'=> 301, 'max'=> 400],
-            'vh-text-lg'=> ['min'=> 171, 'max'=> 300],
-            'vh-text-xl'=> ['min'=> 61, 'max'=> 170],
-            'vh-text-2xl'=> ['min'=> 1, 'max'=> 60],
+            'vh-text-xs'=> [
+                'min'=> 801, 'max'=> 10000
+            ],
+            'vh-text-sm'=> [
+                'min'=> 501, 'max'=> 800
+            ],
+            'vh-text-md'=> [
+                'min'=> 371, 'max'=> 500
+            ],
+            'vh-text-lg'=> [
+                'min'=> 271, 'max'=> 370
+            ],
+            'vh-text-xl'=> [
+                'min'=> 101, 'max'=> 270
+            ],
+            'vh-text-2xl'=> [
+                'min'=> 1, 'max'=> 100
+            ],
         ];
     }
 
@@ -62,17 +69,13 @@ class maverickChunker
     {
         $dom = $this->loadDOM($data);
         $domx = new DOMXPath($dom);
-        //$entries = $domx->evaluate("//p");
-        $entries = $domx->evaluate("*/*");
+        $entries = $domx->evaluate("//p");
         $arr = array();
         foreach ($entries as $entry) {
-            //print_r($entry);
-            if(in_array($entry->nodeName, $this->allowedEl)){
-                $arr[] = $entry;
-            }
+            $arr[] = $entry; // $entry->ownerDocument->saveHtml($entry);
         }
 
-        return $arr;
+        return collect($arr);
     }
 
     private function loadDOM($data, $opt=0)
@@ -97,10 +100,10 @@ class maverickChunker
                 'content' => ($type=='img') ? null : strip_tags($this->elmToHtml($item)),
                 'rawContent' => $this->elmToHtml($item),
                 'attributes' => $this->get_attributes($item),
-                /*'santences' => [
+                'santences' => [
                     'count' => count($this->getSentences(strip_tags($this->elmToHtml($item)))),
                     'items' => $this->getSentences(strip_tags($this->elmToHtml($item)))
-                ],*/
+                ],
             ];
 
             //check current text if it is part of image caption
@@ -128,17 +131,13 @@ class maverickChunker
     private function suit_up_templates(array $rows): array
     {
         $data = [];
-        $skip_next = 0;
-        $curr_char = 0;
-        $next_index = 0;
-        //print_r(array_values($rows));
-        $rows = array_values($rows);
-        foreach($rows as $index=>$row)
+        $skip_next = false;
+        print_r(array_values($rows)); exit;
+        foreach(array_values($rows) as $index=>$row)
         {
             //check if need to skip this itteration 
-            if($skip_next > 0){
-                $skip_next--;
-                $curr_char = 0;
+            if($skip_next){
+                $skip_next = false;
                 continue;
             }
 
@@ -155,35 +154,29 @@ class maverickChunker
                         //combine next row data of image caption into this row
                         $row['attributes']['caption'] = $rows[$index+1];
                         //skip for next itteration
-                        $skip_next++;
+                        $skip_next = true;
                     }
 
                     break;
                 case 'text':
 
-                    //CASE : -- if current text still not reaching max total char per screen
-                    if($row['chars'] < $this->max_char)
-                    {
-                        $curr_char = $row['chars'];
-                        $next_index = $skip_next = 0;
-                        while($curr_char < $this->max_char)
-                        {
-                            $next_index = $index+$skip_next+1;
-                            if(
-                                isset($rows[$next_index]) && 
-                                $rows[$next_index]['type']=='text' &&
-                                ($row['chars'] + $rows[$next_index]['chars']) < $this->max_char
-                            ){
-                                //combine with next row data (as long it also text)
-                                $row['content'] .= ' '.$rows[$next_index]['content'];
-                                $row['rawContent'] .= $rows[$next_index]['rawContent'];
-                                $row['chars'] = $curr_char = strlen($row['content']);
-                                $row['words'] = str_word_count(strip_tags($row['content']));
-                                $skip_next++;
-                            }else{
-                                //reset counter
-                                $curr_char = $this->max_char+1;
-                            }
+                    //CASE : -- if current text is really short
+                    if($row['chars']<=60){
+                        //combine with next row data (as long it also text)
+                        if(isset($rows[$index+1]) && $rows[$index+1]['type']=='text'){
+                            $row['attributes']['subcontent'] = $rows[$index+1];
+                            
+                            //populate template configuration for subcontent
+                            $row['attributes']['subcontent']['template'] = [
+                                'bg_theme' => $templ_conf['bg_theme'],
+                                'fontSize_class' => $this->get_fontSize($row['attributes']['subcontent']['chars'])
+                            ];
+
+                            //change the type to heading
+                            $row['type'] = 'text-heading';
+
+                            //skip for next itteration
+                            $skip_next = true;
                         }
                     }
                     break;
@@ -220,7 +213,6 @@ class maverickChunker
         for ($i = 0; $i < $elm->length; ++$i) {
             //print_r($elm->item($i));
             if($elm->item($i)->nodeName == 'img') $type = 'img';
-            if($elm->item($i)->nodeName == 'ul' || $elm->item($i)->nodeName == 'ol') $type = 'list';
         }
         
         return $type;

@@ -1,9 +1,11 @@
 <?php
 
 require_once "vendor/autoload.php";
-require_once "src/maverickChunker-php5.php";
+//require_once "src/maverickChunker-php5.php";
+require_once "src/maverickChunker-thin.php";
 //require_once "src/maverickChunker.php";
 
+use GuzzleHttp\Client;
 use Dotenv\Dotenv;
 
 class chunkHandler {
@@ -16,9 +18,9 @@ class chunkHandler {
         $dotenv = Dotenv::createMutable(__DIR__);
         $dotenv->load();
 
-        $this->articleId = 1;
+        $this->articleId = $_REQUEST["article_id"];
         $this->apiConf = [
-            'path' => $_ENV['LOCAL_PATH'],
+            'path' => $_ENV['API_PATH'],
             'token' => $_ENV['API_TOKEN']
         ];
     }
@@ -30,10 +32,10 @@ class chunkHandler {
         }else{
 
             $body = $this->get_raw_source();
-            //echo $body;
+            //echo $body.'<hr>';
 
             $body = json_decode($body, true);
-            print_r($body);
+            //print_r($body);
 
             if(count($body) <= 0){
                 echo json_encode(['sts' => 'error', 'message'=>'Not found']);
@@ -55,9 +57,16 @@ class chunkHandler {
 
     function get_raw_source() 
     {
-        $response = file_get_contents("example-source/merdeka-3.json");
+        $client = new Client();
+
+        $url = $this->apiConf['path'].'/news/'
+        . $this->articleId
+        . '/&token='
+        . $this->apiConf['token'];
+
+        $response = $client->request('GET', $url);
         
-        return $response;
+        return $response->getBody();
 
     }
 }
