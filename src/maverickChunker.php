@@ -10,7 +10,8 @@ class maverickChunker
     private $bg_color_opt;
     private $fs_opt;
     private $allowedEl;
-    private $max_char = 700;
+    private $max_char = 900;
+    private $additional_char_per_paragraf = 30; 
     
     function __construct($rawContent)
     {
@@ -172,14 +173,17 @@ class maverickChunker
                             if(
                                 isset($rows[$next_index]) && 
                                 $rows[$next_index]['type']=='text' &&
-                                ($row['chars'] + $rows[$next_index]['chars']) < $this->max_char
+                                ($curr_char + $rows[$next_index]['chars']) < $this->max_char
                             ){
-                                //combine with next row data (as long it also text)
+                                //combine with next row data (as long it also text)                                
                                 $row['content'] .= ' '.$rows[$next_index]['content'];
                                 $row['rawContent'] .= $rows[$next_index]['rawContent'];
                                 $row['chars'] = $curr_char = strlen($row['content']);
                                 $row['words'] = str_word_count(strip_tags($row['content']));
                                 $skip_next++;
+                                $curr_char += ($this->additional_char_per_paragraf*$skip_next);
+                                //$row['curr_char'] = $curr_char;
+                                //$row['skip_next'] = $skip_next;
                             }else{
                                 //reset counter
                                 $curr_char = $this->max_char+1;
