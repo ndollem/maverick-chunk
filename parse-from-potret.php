@@ -58,7 +58,7 @@ class chunkHandler {
     {
         $client = new Client();
 
-        $url = 'https://www.one.co.id/api/article/3220228/?filter[publisher_id]=4&lip6id=1&filter[type_id]=1&limit=20&apps=0&page=1';
+        $url = 'https://www.one.co.id/api/article/'.$this->articleId.'/?filter[publisher_id]=4&lip6id=1&filter[type_id]=1&limit=20&apps=0&page=1';
 
         $response = $client->request(
             'GET', 

@@ -134,6 +134,7 @@ class maverickChunker
         $next_index = 0;
         //print_r(array_values($rows));
         $rows = array_values($rows);
+        
         foreach($rows as $index=>$row)
         {
             //check if need to skip this itteration 
