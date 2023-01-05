@@ -12,6 +12,7 @@ class chunkHandler {
     
     private $apiConf;
     private $articleId;
+    private $debug;
 
     function __construct() {
         // Looing for .env at the root directory
@@ -19,6 +20,8 @@ class chunkHandler {
         $dotenv->load();
 
         $this->articleId = $_REQUEST["article_id"];
+        $this->debug = isset($_REQUEST["debug"]) ? $_REQUEST["debug"] : false;
+        
         $this->apiConf = [
             'path' => $_ENV['API_PATH'],
             'token' => $_ENV['API_TOKEN']
@@ -40,16 +43,16 @@ class chunkHandler {
             if(count($body) <= 0){
                 echo json_encode(['sts' => 'error', 'message'=>'Not found']);
             }else{
-                $chunker = new maverickChunker($body);
+                $chunker = new maverickChunker();
 
                 //populate all content into a single text
-                /*$content = $body->news_content;
-                foreach($body->news_paging as $paging){
-                    $content .= html_entity_decode($paging->content);
-                }*/
-                //return (json_decode($chunker->explode_content()));
-                
-                return ($chunker->parseNews($body));
+                $content = $body['news_content'];
+                foreach ($body['news_paging'] as $paging) {
+                    $content .= html_entity_decode($paging['content']);
+                }
+                if($this->debug) echo $content;
+
+                return ($chunker->parseNews(['content' => $content]));
                 
             }
         }
