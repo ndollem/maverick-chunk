@@ -10,6 +10,7 @@ class maverickChunker
     private $bg_color_opt;
     private $fs_opt;
     private $allowedEl;
+    private $allowedType;
     private $max_char = 900;
     private $additional_char_per_paragraf = 30; 
     private $site_origin = 'trstdly.com';
@@ -21,7 +22,9 @@ class maverickChunker
         $this->bg_color_order = -1;
 
         //allowed main element to be checked on chunk process
-        $this->allowedEl = ['p', 'ol', 'ul', 'img', 'figure', 'h2'];
+        $this->allowedEl = ['p', 'ol', 'ul', 'img', 'figure', 'h2', 'blockquote', 'iframe'];
+
+        $this->allowedType = ['img', 'script', 'embed-youtube', 'embed-instagram', 'embed-twitter', 'embed-tiktok', 'embed-facebook'];
         
         //adjust this according to each site provided UI Style
         $this->bg_color_opt = [
@@ -65,7 +68,19 @@ class maverickChunker
         foreach ($entries as $entry) {
             //print_r($entry);
             if(in_array($entry->nodeName, $this->allowedEl)){
-                $arr[] = $entry;
+                if(strlen(trim($entry->textContent))>0){
+                    //push to array if text content has value
+                    $arr[] = $entry;
+                }else{
+                    $elm = $entry->childNodes;
+                    //consider node name is a p (paragraf), check for child element 
+                    for ($i = 0; $i < $elm->length; ++$i) {
+                        //push to array if the element is script or iframe
+                        if(in_array($elm->item($i)->nodeName, ['iframe', 'script', 'img'])){
+                            $arr[] = $elm->item($i);
+                        }
+                    }
+                }
             }
         }
 
@@ -85,13 +100,14 @@ class maverickChunker
         $elm->transform(function($item, $key) {
             //print_r($item);
             
+            //define type of item
             $type = $this->get_type_basedOnNodes($item);
 
             $return = [
                 'type' => $type,
-                'chars' => ($type=='img') ? 0 : strlen($item->textContent),
-                'words' => ($type=='img') ? 0 : str_word_count(strip_tags($this->elmToHtml($item))),
-                'content' => ($type=='img') ? null : strip_tags($this->elmToHtml($item)),
+                'chars' => (in_array($type, ['img', ['script']])) ? 0 : strlen($item->textContent),
+                'words' => (in_array($type, ['img', ['script']])) ? 0 : str_word_count(strip_tags($this->elmToHtml($item))),
+                'content' => (in_array($type, ['img', ['script']])) ? null : strip_tags($this->elmToHtml($item)),
                 'rawContent' => $this->elmToHtml($item),
                 'attributes' => $this->get_attributes($item),
             ];
@@ -106,9 +122,12 @@ class maverickChunker
             {
                 $return['type'] = 'img-caption';
             }
-
-            //skip no value on paragraph
-            if($return['chars']>5 || $return['type']=='img'){
+            //print_r($return);
+            //skip no value on paragraph or non allowed type list
+            if(
+                $return['words']>0 || 
+                in_array($return['type'], $this->allowedType)
+            ){
                 return $return;
             }
         });
@@ -142,8 +161,29 @@ class maverickChunker
             $templ_conf['bg_theme'] = $this->bg_color_opt[$this->bg_color_order];
             
             switch ($row['type']) {
-                case 'title':
-                    //CASE : -- if the current type is title
+                case 'embed-instagram':
+                    //combine script on next item into this item
+                    if(isset($rows[$index+1]) && $rows[$index+1]['type']=='script'){
+                        $row['rawContent'] .= $rows[$index+1]['rawContent'];
+                        $row['attributes'] = $rows[$index+1]['attributes'];
+                        //skip for next itteration
+                        $skip_next++;
+                    }
+                    break;
+                case 'embed-twitter':
+                    //combine script on next item into this item
+                    if(isset($rows[$index+1]) && $rows[$index+1]['type']=='script'){
+                        $row['rawContent'] .= $rows[$index+1]['rawContent'];
+                        $row['attributes'] = $rows[$index+1]['attributes'];
+                        //skip for next itteration
+                        $skip_next++;
+                    }
+                    break;
+                case 'embed-youtube':
+                    //do nothing, just break and continue next intteration here.
+                    break;
+                case 'title': //CASE : -- if the current type is title
+                    //CASE : -- next item is an image
                     if(isset($rows[$index+1]) && $rows[$index+1]['type']=='img'){
                         //combine next row data of image into this row
                         $row['rawContent'] .= $rows[$index+1]['rawContent'];
@@ -152,7 +192,7 @@ class maverickChunker
                         //skip for next itteration
                         $skip_next++;
 
-                        //CASE : -- if the next row after image is a caption
+                        //CASE : -- if the next item after image is a caption
                         if(isset($rows[$index+2]) && $rows[$index+2]['type']=='img-caption'){
                             //combine next row data of image caption into this row
                             $row['attributes']['caption'] = $rows[$index+2];
@@ -194,10 +234,11 @@ class maverickChunker
         return $data;
     }
 
-    private function populate_text_content($rows, $index)
+    private function populate_text_content($rows, $index): array
     {
         $row = $rows[$index];
-
+        $skip_next = 0;
+        
         if($row['chars'] < $this->max_char)
         {
             //reset all looping variables
@@ -217,12 +258,21 @@ class maverickChunker
                     ($rows[$next_index]['type']=='text' || $rows[$next_index]['type']=='title' || $rows[$next_index]['type']=='list') &&
                     ($curr_char + $rows[$next_index]['chars']) < $this->max_char
                 ){
-                    //CASE : -- if current index is Title text type and if the next row after title is an image
                     if(
+                        //CASE : -- if current index is Title type and if the next row after title is an image
                         $rows[$next_index]['type']=='title' && 
                         $rows[$next_index + 1]['type']=='img'
                     ){
                         //then stop the itteration here, in order to make the title & image to be populated in 1 screen
+                        $curr_char = $this->max_char+1;
+                    }elseif(
+                        //CASE : -- if current index is Title type and if the next row after title is a text 
+                        //and total current char combined with title & text are exceeding max_char
+                        $rows[$next_index]['type']=='title' && 
+                        $rows[$next_index + 1]['type']=='text' && 
+                        (($curr_char + $this->additional_char_per_paragraf + $rows[$next_index]['chars'] + $this->additional_char_per_paragraf + $rows[$next_index + 1]['chars']) > $this->max_char)
+                    ){
+                        //then stop the itteration here, in order to make this title & next text to be populated in 1 screen
                         $curr_char = $this->max_char+1;
                     }else{
                         //combine with next row data (as long it also text)    
@@ -265,21 +315,40 @@ class maverickChunker
     {
         $type = 'text';
         $elm = $item->childNodes;
-        //print_r($this->get_attributes($item));
-
+        //print_r($item);
         if($item->nodeName=='h2'){
             $type = 'title';
         }elseif($item->nodeName=='ul' || $item->nodeName=='ol'){
             $type = 'list';
+        }elseif($item->nodeName=='blockquote'){
+            //case embed from twitter
+            $attr = ($this->get_attributes($item));
+            if(in_array('twitter-tweet', $attr)){
+                $type = 'embed-twitter';
+            }elseif(in_array('instagram-media', $attr)){
+                $type = 'embed-instagram';
+            }elseif(in_array('tiktok-embed', $attr)){
+                $type = 'embed-tiktok';
+            }
+        }elseif($item->nodeName=='iframe'){
+            $attr = ($this->get_attributes($item));
+            if(preg_grep('~facebook~', $attr)){
+                $type = 'embed-facebook';
+            }elseif(preg_grep('~youtube~', $attr)){
+                $type = 'embed-youtube';
+            }
+        }elseif($item->nodeName=='script'){
+            $type = 'script';
+        }elseif($item->nodeName=='img'){
+            $type = 'img';
         }else{
             //consider node name is a p (paragraf), check for child element 
             for ($i = 0; $i < $elm->length; ++$i) {
                 //print_r($elm->item($i));
                 $nodeName = $elm->item($i)->nodeName;
-                if($nodeName == 'img') $type = 'img';
+                //if($nodeName == 'img') $type = 'img';
                 
                 if(
-                    //specific to handle image caption from newshub cms
                     ($nodeName == 'strong' || $nodeName == 'h2') && //the child node contain h2 or strong
                     $elm->length==1 //the node only have 1 child element
                 ){
@@ -304,9 +373,11 @@ class maverickChunker
     private function get_attributes(DOMElement $dom): array
     {
         $attr = [];
-        
-        $elm = $dom->firstChild->nodeName=='img' ? $dom->firstChild : $dom;
+        $elm = $dom;
 
+        if($dom->firstChild){
+            $elm = $dom->firstChild->nodeName=='img' ? $dom->firstChild : $dom;
+        }
         for ($i = 0; $i < $elm->attributes->length; ++$i) {
             $name = $elm->attributes->item($i)->name;
             $attr[$name] = $elm->attributes->item($i)->value;
