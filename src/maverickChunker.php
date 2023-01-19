@@ -12,6 +12,7 @@ class maverickChunker
     private $allowedEl;
     private $max_char = 900;
     private $additional_char_per_paragraf = 30; 
+    private $site_origin = 'trstdly.com';
     
     function __construct()
     {
@@ -39,6 +40,7 @@ class maverickChunker
 
     public function parseNews($row)
     {
+        $this->site_origin = isset($row['origin']) ? $row['origin'] : $this->site_origin;
         $news = collect();
 
         $news = $news->merge($this->parseDom($this->replace_fig_with_p($row['content'])));
@@ -263,7 +265,8 @@ class maverickChunker
     {
         $type = 'text';
         $elm = $item->childNodes;
-        
+        //print_r($this->get_attributes($item));
+
         if($item->nodeName=='h2'){
             $type = 'title';
         }elseif($item->nodeName=='ul' || $item->nodeName=='ol'){
@@ -276,10 +279,18 @@ class maverickChunker
                 if($nodeName == 'img') $type = 'img';
                 
                 if(
+                    //specific to handle image caption from newshub cms
                     ($nodeName == 'strong' || $nodeName == 'h2') && //the child node contain h2 or strong
                     $elm->length==1 //the node only have 1 child element
                 ){
                     $type = 'title';
+                }elseif(
+                    //specific to handle image caption from merdeka cms
+                    $nodeName == 'em' && //the child node contain em
+                    $this->site_origin == 'merdeka.com' && //the request coming from merdeka
+                    $elm->length==1 //the node only have 1 child element
+                ){
+                    $type = 'img-caption';
                 }
             }
         }
