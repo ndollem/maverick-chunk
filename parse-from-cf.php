@@ -28,7 +28,7 @@ class chunkHandler
             'path' => $_ENV['API_PATH'],
             'token' => $_ENV['API_TOKEN'],
             //'cloudPath' => 'http://localhost:8080'
-            'cloudPath' => 'https://asia-southeast2-kly-microservices-373603.cloudfunctions.net/Maverick-Chunker'
+            'cloudPath' => 'https://maverick-chunker-v2-zrwerla26a-et.a.run.app'
         ];
     }
 

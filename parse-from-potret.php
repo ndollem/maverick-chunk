@@ -35,7 +35,7 @@ class chunkHandler {
 
             $body = json_decode($body, true);
             $body = $body['data'];
-            //print_r($body);
+            print_r($body);
 
             if(count($body) <= 0){
                 echo json_encode(['sts' => 'error', 'message'=>'Not found']);
